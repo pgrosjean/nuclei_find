@@ -53,7 +53,9 @@ class czi_image:
         self.input_shape = self.nuclei_image.shape
         self.filename = file
         self.csv_file = csv_file
-        self.spatial_df = pd.DataFrame.from_csv(csv_file)
+        self.spatial_df = pd.read_csv(csv_file)
+        print('csv: \n', self.csv_file)
+        print('image: \n', self.filename)
 
     def show(self):
         '''
@@ -212,9 +214,11 @@ class czi_image:
         hashs = spatial_locations['hash']
         xdim_scale = spatial_locations['xdim_scale'].to_numpy()[0]
         ydim_scale = spatial_locations['ydim_scale'].to_numpy()[0]
+        x_unscaled = spatial_locations['coords.x1'].to_numpy()
+        y_unscaled = spatial_locations['coords.x2'].to_numpy()
         x = np.round(np.subtract(self.input_shape[1], np.multiply((self.input_shape[1]/xdim_scale), np.round(spatial_locations['coords.x1'].to_numpy()))))
         y = np.round(np.subtract(self.input_shape[0], np.multiply((self.input_shape[0]/ydim_scale), np.round(spatial_locations['coords.x2'].to_numpy()))))
-        samples = zip(y,x,rows,cols,hashs)
+        samples = zip(y,x,rows,cols,hashs,x_unscaled,y_unscaled)
         array_for_fit = []
         meta_data = []
         for sample in samples:
@@ -251,6 +255,8 @@ class czi_image:
         points_list = np.array(list(set(dict_sparse.keys()) | set(dict_dense.keys())))
         out_dict = {'row': [meta_data[point][0] for point in points_list]}
         out_dict['col'] = [meta_data[point][1] for point in points_list]
+        out_dict['coords.x1'] = [meta_data[point][3] for point in points_list]
+        out_dict['coords.x2'] = [meta_data[point][4] for point in points_list]
         out_dict['hash'] = [meta_data[point][2] for point in points_list]
         out_dict['Dense Nuclei Count'] = np.array([dict_dense_count.get(key, 0) for key in points_list])
         out_dict['Sparse Nuclei Count'] = np.array([dict_sparse_count.get(key, 0) for key in points_list])
@@ -380,19 +386,19 @@ class czi_image:
 
 
     def padwithzeros(self, vector, pad_width, iaxis, kwargs):
-        '''This function pads an image with zeros around the borders. Used by np.lib.pad
-            to generate padded image.
+        '''
+        This function pads an image with zeros around the borders. Used by np.lib.pad
+        to generate padded image.
 
-            Args:
-            vector (numpy array): Array instance used to pad array
-            pad_width (tuple): Tuple with length corresponding to the dimensions of
-            the array being padded describing the amount to be padded by for example
-            (2,3) would add +2 and +3 to the first and second dimensions of a 2D
-            array.
+        Args:
+        vector (numpy array): Array instance used to pad array
+        pad_width (tuple): Tuple with length corresponding to the dimensions of
+        the array being padded describing the amount to be padded by for example
+        (2,3) would add +2 and +3 to the first and second dimensions of a 2D
+        array.
 
-            Returns:
-            Vector: vector used by np.lib.pad to pad the array of interest.
-
+        Returns:
+        Vector: vector used by np.lib.pad to pad the array of interest.
         '''
         vector[:pad_width[0]] = 0
         vector[-pad_width[1]:] = 0
